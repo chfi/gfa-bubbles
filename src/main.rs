@@ -4,6 +4,7 @@ use gfa::parser::parse_gfa;
 use std::env;
 use std::path::PathBuf;
 
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
 
@@ -29,6 +30,49 @@ fn handlegraph_to_pet<T: HandleGraph>(graph: &T) -> DiGraph<u32, ()> {
         let r = u32::try_from(r.unpack_number()).unwrap();
         (l, r)
     }))
+}
+
+struct BubbleState {
+    branch_visits: BTreeMap<NodeId, BTreeSet<NodeId>>,
+    branch_deque: BTreeMap<NodeId, VecDeque<NodeId>>,
+}
+
+impl BubbleState {
+    fn new(nodes: &Vec<NodeId>) -> BubbleState {
+        let mut branch_visits = BTreeMap::new();
+        let mut branch_deque = BTreeMap::new();
+        for n in nodes {
+            branch_visits.insert(*n, BTreeSet::new());
+            branch_deque.insert(*n, VecDeque::new());
+        }
+        BubbleState {
+            branch_visits,
+            branch_deque,
+        }
+    }
+
+    // Update the visited set and queue for the branch that started at
+    // the node `from`, with the visited node `visited`, which has the
+    // right-hand neighbors `neighbors`
+    fn visit_from_branch(&mut self, from: NodeId, visited: NodeId, neighbors: &Vec<NodeId>) {
+        self.branch_visits.entry(from).and_modify(|set| {
+            set.insert(visited);
+        });
+
+        let visits = self.branch_visits.get(&from).unwrap();
+        let to_visit = neighbors.into_iter().filter(|n| !visits.contains(&n));
+
+        self.branch_deque.entry(from).and_modify(|deq| {
+            for n in to_visit {
+                deq.push_back(*n);
+            }
+        });
+    }
+}
+
+struct Bubble {
+    start: NodeId,
+    end: NodeId,
 }
 
 fn bubble_starts<T: HandleGraph>(graph: &T) -> Vec<NodeId> {
