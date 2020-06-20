@@ -66,6 +66,7 @@ impl BubbleState {
     // right-hand neighbors `neighbors`
 
     // TODO this should take the LHS-degree of the visited node and update the branch_ends accordingly, if it matches the bubble degree
+    #[allow(dead_code)]
     fn visit_from_branch(
         &mut self,
         from: NodeId,
@@ -84,6 +85,65 @@ impl BubbleState {
                 deq.push_back(*n);
             }
         });
+    }
+
+    fn can_continue(&self) -> bool {
+        self.branch_deque.values().all(|dq| dq.is_empty())
+    }
+
+    // Returns the possibly detected ends
+    fn propagate<T: HandleGraph>(
+        &mut self,
+        graph: &T,
+    ) -> Option<BTreeSet<NodeId>> {
+        // take one step on each of the branches
+
+        // println!("propagating");
+        let branches: Vec<_> = self.branch_deque.keys().cloned().collect();
+
+        let mut possible_ends: BTreeSet<NodeId> = BTreeSet::new();
+
+        for b_id in branches.into_iter() {
+            let b_deq: &mut VecDeque<NodeId> =
+                self.branch_deque.get_mut(&b_id).unwrap();
+            println!("deq len: {}", b_deq.len());
+
+            if let Some(next_id) = b_deq.pop_front() {
+                println!("branch {:?}\t visiting {:?}", b_id, next_id);
+                let b_visits: &mut BTreeSet<NodeId> =
+                    self.branch_visits.get_mut(&b_id).unwrap();
+
+                if !b_visits.contains(&next_id) {
+                    let handle = Handle::pack(next_id, false);
+
+                    if graph.get_degree(&handle, Direction::Left) > 1 {
+                        println!("possible end");
+                        possible_ends.insert(next_id);
+                        self.branch_ends
+                            .get_mut(&b_id)
+                            .unwrap()
+                            .insert(next_id);
+                    }
+
+                    let neighbors =
+                        handle_edges_iter(graph, handle, Direction::Right)
+                            .filter(|h| !b_visits.contains(&h.id()));
+
+                    for h in neighbors {
+                        b_deq.push_back(h.id());
+                    }
+
+                    b_visits.insert(next_id);
+                }
+            }
+        }
+
+        if possible_ends.is_empty() {
+            None
+        } else {
+            println!("possible ends: {}", possible_ends.len());
+            Some(possible_ends)
+        }
     }
 
     // if the given node exists in all branch_ends, return the corresponding bubble
@@ -107,12 +167,13 @@ impl BubbleState {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 struct Bubble {
     start: NodeId,
     end: NodeId,
 }
 
-fn bubble_starts<T: HandleGraph>(graph: &T) -> Vec<NodeId> {
+fn bubble_starts<T: HandleGraph>(graph: &T) -> Vec<Bubble> {
     let mut starts = Vec::new();
 
     let mut visited: BTreeSet<NodeId> = BTreeSet::new();
@@ -137,6 +198,21 @@ fn bubble_starts<T: HandleGraph>(graph: &T) -> Vec<NodeId> {
 
                 let mut bubble = BubbleState::new(rhs_degree, nid, &neighbors);
 
+                let mut running = true;
+
+                while running {
+                    if let Some(possible_ends) = bubble.propagate(graph) {
+                        // if any of the possible ends actually end the
+                        // bubble, we're done
+                        for end in possible_ends {
+                            if let Some(b) = bubble.check_finished(&end) {
+                                running = false;
+                                bubbles.push(b);
+                            }
+                        }
+                    }
+                }
+
                 // TODO loop through all the queues in the
                 // bubblestate, traversing the graph and updating the
                 // visited sets of each branch
@@ -148,22 +224,16 @@ fn bubble_starts<T: HandleGraph>(graph: &T) -> Vec<NodeId> {
                 // current_bubble = Some(BubbleState::new(&neighbors));
 
                 starts.push(nid)
-            } else {
-                // we're building a bubble,
-                let mut state = current_bubble.unwrap();
-
-                current_bubble = Some(state);
-                // current_bubble = None;
             }
             handle_edges_iter(graph, h, Direction::Right).for_each(|h| {
                 deque.push_back(h.id());
-                visited.insert(nid);
             });
         }
         visited.insert(nid);
     }
 
-    starts
+    bubbles
+    // starts
 }
 
 fn main() {
