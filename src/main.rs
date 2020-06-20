@@ -12,7 +12,9 @@ use std::convert::TryFrom;
 use std::process::exit;
 
 use handlegraph::handle::{Direction, Edge, Handle, NodeId};
-use handlegraph::handlegraph::{edges_iter, handle_edges_iter, handle_iter, HandleGraph};
+use handlegraph::handlegraph::{
+    edges_iter, handle_edges_iter, handle_iter, HandleGraph,
+};
 use handlegraph::hashgraph::*;
 use handlegraph::pathgraph::{occurrences_iter, paths_iter, PathHandleGraph};
 
@@ -64,7 +66,12 @@ impl BubbleState {
     // right-hand neighbors `neighbors`
 
     // TODO this should take the LHS-degree of the visited node and update the branch_ends accordingly, if it matches the bubble degree
-    fn visit_from_branch(&mut self, from: NodeId, visited: NodeId, neighbors: &Vec<NodeId>) {
+    fn visit_from_branch(
+        &mut self,
+        from: NodeId,
+        visited: NodeId,
+        neighbors: &Vec<NodeId>,
+    ) {
         self.branch_visits.entry(from).and_modify(|set| {
             set.insert(visited);
         });

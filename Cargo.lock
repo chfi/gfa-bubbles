@@ -50,12 +50,19 @@ checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "gfa"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a401867e45ad7e5a9298800a34ae7e5eca4f4d0d4cbfb69609ee54e2b15421a"
+version = "0.2.2"
 dependencies = [
  "lazy_static",
  "nom",
+]
+
+[[package]]
+name = "gfabubbles"
+version = "0.1.0"
+dependencies = [
+ "gfa",
+ "handlegraph",
+ "petgraph",
 ]
 
 [[package]]
@@ -216,12 +223,3 @@ name = "version_check"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "078775d0255232fb988e6fccf26ddc9d1ac274299aaedcedce21c6f72cc533ce"
-
-[[package]]
-name = "vgpop"
-version = "0.1.0"
-dependencies = [
- "gfa",
- "handlegraph",
- "petgraph",
-]

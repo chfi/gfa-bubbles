@@ -1,5 +1,5 @@
 [package]
-name = "vgpop"
+name = "gfabubbles"
 version = "0.1.0"
 authors = ["christian <christian@chfi.se>"]
 edition = "2018"
@@ -7,6 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gfa = "0.2.1"
+gfa = { path = "../rs-gfa" }
 handlegraph = { path = "../rs-handlegraph" }
 petgraph = "0.5.1"
