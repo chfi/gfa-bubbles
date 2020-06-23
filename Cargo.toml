@@ -9,4 +9,3 @@ edition = "2018"
 [dependencies]
 gfa = { path = "../rs-gfa" }
 handlegraph = { path = "../rs-handlegraph" }
-petgraph = "0.5.1"
