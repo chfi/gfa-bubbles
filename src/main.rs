@@ -56,8 +56,6 @@ impl BubbleState {
 
         let mut possible_ends: BTreeSet<NodeId> = BTreeSet::new();
 
-        // println!("propagating");
-
         for b_id in branches.into_iter() {
             let b_deq: &mut VecDeque<NodeId> =
                 self.branch_deque.get_mut(&b_id).unwrap();
@@ -88,12 +86,7 @@ impl BubbleState {
                         handle_edges_iter(graph, handle, Direction::Right)
                             .collect();
 
-                    // println!("neighbors: {}", neighbors.len());
-
-                    for h in neighbors {
-                        b_deq.push_back(h.id());
-                    }
-                    // println!("deque next: {}", b_deq.len());
+                    neighbors.iter().for_each(|h| b_deq.push_back(h.id()));
 
                     b_visits.insert(next_id);
                 }
@@ -111,7 +104,6 @@ impl BubbleState {
     // corresponding bubble
     fn check_finished(&self, node: &NodeId) -> Option<Bubble> {
         let count = self.branch_ends.iter().fold(0, |a, (_branch, ends)| {
-            let ends: &BTreeSet<NodeId> = ends;
             if ends.contains(node) {
                 a + 1
             } else {
@@ -151,9 +143,9 @@ fn find_bubbles<T: HandleGraph>(graph: &T) -> Vec<Bubble> {
 
         if !visited.contains(&nid) {
             let rhs_degree = graph.get_degree(&h, Direction::Right);
+            // If we're not in a bubble, but the outbound edges
+            // branch, we start a bubble
             if rhs_degree > 1 {
-                println!("start at {:?}", nid);
-                // start a new bubble
                 let neighbors = handle_edges_iter(graph, h, Direction::Right)
                     .map(|h| h.id())
                     .collect();
@@ -162,27 +154,26 @@ fn find_bubbles<T: HandleGraph>(graph: &T) -> Vec<Bubble> {
 
                 while !found_bubble {
                     if let Some(possible_ends) = bubble.propagate(graph) {
-                        // if any of the possible ends actually end the
-                        // bubble, we're done
+                        // if any of the possible ends actually end
+                        // the bubble, we're done
                         for end in possible_ends {
                             if let Some(b) = bubble.check_finished(&end) {
-                                println!("end at {:?}", b.end);
                                 found_bubble = true;
                                 bubbles.push(b);
                             }
                         }
                     }
+                    // Aborts if none of the bubble branches can
+                    // continue; should only happen if a possible
+                    // bubble start is found at the end of the graph
                     if !bubble.can_continue() {
-                        println!("aborting");
                         found_bubble = true;
                     }
                 }
-
-                // Once the end of the bubble is found, we want to skip past
             }
+            // Skip forward if a bubble was found
             if found_bubble {
-                let last_bubble: &Bubble = bubbles.last().unwrap();
-                deque.push_back(last_bubble.end);
+                deque.push_back(bubbles.last().unwrap().end);
             } else {
                 handle_edges_iter(graph, h, Direction::Right).for_each(|h| {
                     deque.push_back(h.id());
@@ -206,10 +197,11 @@ fn main() {
 
         let bubbles = find_bubbles(&graph);
 
-        println!("Found {} bubbles", bubbles.len());
+        println!("# found {} bubbles", bubbles.len());
+        println!("start,end");
 
         for b in bubbles {
-            println!("{:?} -> {:?}", b.start, b.end);
+            println!("{},{}", u64::from(b.start), u64::from(b.end));
         }
     } else {
         usage(&args[0]);
