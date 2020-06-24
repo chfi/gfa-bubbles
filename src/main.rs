@@ -75,7 +75,9 @@ impl BubbleState {
                             handle_edges_iter(graph, handle, Direction::Right)
                                 .next()
                                 .unwrap();
+
                         possible_ends.insert(possible_end.id());
+
                         self.branch_ends
                             .get_mut(&b_id)
                             .unwrap()
@@ -127,14 +129,14 @@ struct Bubble {
     end: NodeId,
 }
 
-fn find_bubbles<T: HandleGraph>(graph: &T) -> Vec<Bubble> {
+fn find_bubbles<T: HandleGraph>(graph: &T, start: NodeId) -> Vec<Bubble> {
     let mut visited: BTreeSet<NodeId> = BTreeSet::new();
 
     let mut deque: VecDeque<NodeId> = VecDeque::new();
 
     let mut bubbles: Vec<Bubble> = Vec::new();
 
-    deque.push_back(NodeId::from(1));
+    deque.push_back(start);
 
     while let Some(nid) = deque.pop_front() {
         let h = Handle::pack(nid, false);
@@ -175,9 +177,8 @@ fn find_bubbles<T: HandleGraph>(graph: &T) -> Vec<Bubble> {
             if found_bubble {
                 deque.push_back(bubbles.last().unwrap().end);
             } else {
-                handle_edges_iter(graph, h, Direction::Right).for_each(|h| {
-                    deque.push_back(h.id());
-                });
+                handle_edges_iter(graph, h, Direction::Right)
+                    .for_each(|h| deque.push_back(h.id()));
             }
         }
         visited.insert(nid);
@@ -195,7 +196,14 @@ fn main() {
     if let Some(gfa) = parse_gfa(&path) {
         let graph = HashGraph::from_gfa(&gfa);
 
-        let bubbles = find_bubbles(&graph);
+        let start_node = args
+            .get(2)
+            .and_then(|i| i.parse::<u64>().ok())
+            .map(NodeId::from)
+            .or(Some(NodeId::from(1)))
+            .unwrap();
+
+        let bubbles = find_bubbles(&graph, start_node);
 
         println!("# found {} bubbles", bubbles.len());
         println!("start,end");
@@ -209,6 +217,6 @@ fn main() {
 }
 
 fn usage(name: &str) {
-    println!("Usage: {} <path-to-gfa>", name);
+    println!("Usage: {} <path-to-gfa> [optional start node]", name);
     exit(1);
 }
