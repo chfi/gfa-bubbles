@@ -1,4 +1,3 @@
-use gfa::gfa::GFA;
 use gfa::parser::parse_gfa;
 
 use std::env;
@@ -10,12 +9,9 @@ use std::collections::VecDeque;
 
 use std::process::exit;
 
-use handlegraph::handle::{Direction, Edge, Handle, NodeId};
-use handlegraph::handlegraph::{
-    edges_iter, handle_edges_iter, handle_iter, HandleGraph,
-};
+use handlegraph::handle::{Direction, Handle, NodeId};
+use handlegraph::handlegraph::{handle_edges_iter, HandleGraph};
 use handlegraph::hashgraph::*;
-use handlegraph::pathgraph::{occurrences_iter, paths_iter, PathHandleGraph};
 
 struct BubbleState {
     branch_visits: BTreeMap<NodeId, BTreeSet<NodeId>>,
@@ -150,6 +146,9 @@ fn find_bubbles<T: HandleGraph>(graph: &T) -> Vec<Bubble> {
 
     while let Some(nid) = deque.pop_front() {
         let h = Handle::pack(nid, false);
+
+        let mut found_bubble = false;
+
         if !visited.contains(&nid) {
             let rhs_degree = graph.get_degree(&h, Direction::Right);
             if rhs_degree > 1 {
@@ -161,29 +160,34 @@ fn find_bubbles<T: HandleGraph>(graph: &T) -> Vec<Bubble> {
 
                 let mut bubble = BubbleState::new(rhs_degree, nid, &neighbors);
 
-                let mut running = true;
-
-                while running {
+                while !found_bubble {
                     if let Some(possible_ends) = bubble.propagate(graph) {
                         // if any of the possible ends actually end the
                         // bubble, we're done
                         for end in possible_ends {
                             if let Some(b) = bubble.check_finished(&end) {
                                 println!("end at {:?}", b.end);
-                                running = false;
+                                found_bubble = true;
                                 bubbles.push(b);
                             }
                         }
                     }
                     if !bubble.can_continue() {
                         println!("aborting");
-                        running = false;
+                        found_bubble = true;
                     }
                 }
+
+                // Once the end of the bubble is found, we want to skip past
             }
-            handle_edges_iter(graph, h, Direction::Right).for_each(|h| {
-                deque.push_back(h.id());
-            });
+            if found_bubble {
+                let last_bubble: &Bubble = bubbles.last().unwrap();
+                deque.push_back(last_bubble.end);
+            } else {
+                handle_edges_iter(graph, h, Direction::Right).for_each(|h| {
+                    deque.push_back(h.id());
+                });
+            }
         }
         visited.insert(nid);
     }
