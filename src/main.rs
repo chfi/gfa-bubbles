@@ -138,6 +138,13 @@ fn find_bubbles<T: HandleGraph>(graph: &T, start: NodeId) -> Vec<Bubble> {
 
     deque.push_back(start);
 
+    let max_restarts = 100;
+
+    let mut loop_ends: Vec<NodeId> = Vec::new();
+    let mut loop_end = None;
+
+    let mut restarts = 0;
+
     while let Some(nid) = deque.pop_front() {
         let h = Handle::pack(nid, false);
 
@@ -167,12 +174,29 @@ fn find_bubbles<T: HandleGraph>(graph: &T, start: NodeId) -> Vec<Bubble> {
                     }
                     // Aborts if none of the bubble branches can
                     // continue; should only happen if a possible
-                    // bubble start is found at the end of the graph
+                    // bubble start is found at the end of the graph,
+                    // or if the search is stuck in a loop
                     if !bubble.can_continue() {
-                        found_bubble = true;
+                        // For now we assume the search gets stuck in a loop
+                        if restarts < max_restarts {
+                            if let Some(lnid) = loop_end {
+                                deque.push_back(lnid + 1);
+                                restarts += 1;
+                                loop_end = Some(lnid + 1);
+                            } else {
+                                loop_end = Some(nid);
+                            }
+                        }
+                        // if restarts < max_restarts {
+                        //     deque.push_back(nid + 1);
+                        //     restarts += 1;
+                        // }
+                        // found_bubble = true;
                     }
                 }
             }
+            loop_end = None;
+            restarts = 0;
             // Skip forward if a bubble was found
             if found_bubble {
                 deque.push_back(bubbles.last().unwrap().end);
@@ -203,7 +227,22 @@ fn main() {
             .or(Some(NodeId::from(1)))
             .unwrap();
 
-        let bubbles = find_bubbles(&graph, start_node);
+        let mut bubbles = Vec::new();
+        let mut start = start_node;
+        for _i in 0..10 {
+            let mut results = find_bubbles(&graph, start);
+            bubbles.append(&mut results);
+            match bubbles.last() {
+                None => {
+                    break;
+                }
+                Some(n) => {
+                    start = n.end + 1;
+                    println!("restarting at {:?}", start);
+                }
+            };
+            // start = results.last().unwrap().end + 1;
+        }
 
         println!("# found {} bubbles", bubbles.len());
         println!("start,end");
