@@ -67,8 +67,7 @@ impl BubbleState {
                 if !b_visits.contains(&next_id) {
                     let handle = Handle::pack(next_id, false);
 
-                    let out_degree =
-                        graph.get_degree(&handle, Direction::Right);
+                    let out_degree = graph.degree(handle, Direction::Right);
 
                     if out_degree == 1 {
                         let possible_end =
@@ -151,7 +150,7 @@ fn find_bubbles<T: HandleGraph>(graph: &T, start: NodeId) -> Vec<Bubble> {
         let mut found_bubble = false;
 
         if !visited.contains(&nid) {
-            let rhs_degree = graph.get_degree(&h, Direction::Right);
+            let rhs_degree = graph.degree(h, Direction::Right);
             // If we're not in a bubble, but the outbound edges
             // branch, we start a bubble
             if rhs_degree > 1 {
